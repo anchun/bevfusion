@@ -2,7 +2,7 @@
 #include <ATen/cuda/CUDAContext.h>
 #include <c10/cuda/CUDAGuard.h>
 #include <torch/types.h>
-
+#include <c10/cuda/CUDAStream.h>
 #include <ATen/cuda/CUDAApplyUtils.cuh>
 
 #define CHECK_CUDA(x) \
@@ -268,7 +268,7 @@ int hard_voxelize_gpu(const at::Tensor& points, at::Tensor& voxels,
   AT_DISPATCH_ALL_TYPES(
       points.scalar_type(), "hard_voxelize_kernel", ([&] {
         dynamic_voxelize_kernel<scalar_t, int>
-            <<<grid, block, 0, at::cuda::getCurrentCUDAStream()>>>(
+            <<<grid, block, 0, c10::cuda::getCurrentCUDAStream()>>>(
                 points.contiguous().data_ptr<scalar_t>(),
                 temp_coors.contiguous().data_ptr<int>(), voxel_x, voxel_y,
                 voxel_z, coors_x_min, coors_y_min, coors_z_min, coors_x_max,
@@ -296,7 +296,7 @@ int hard_voxelize_gpu(const at::Tensor& points, at::Tensor& voxels,
   AT_DISPATCH_ALL_TYPES(
       temp_coors.scalar_type(), "determin_duplicate", ([&] {
         point_to_voxelidx_kernel<int>
-            <<<map_grid, map_block, 0, at::cuda::getCurrentCUDAStream()>>>(
+            <<<map_grid, map_block, 0, c10::cuda::getCurrentCUDAStream()>>>(
                 temp_coors.contiguous().data_ptr<int>(),
                 point_to_voxelidx.contiguous().data_ptr<int>(),
                 point_to_pointidx.contiguous().data_ptr<int>(), max_points,
@@ -320,7 +320,7 @@ int hard_voxelize_gpu(const at::Tensor& points, at::Tensor& voxels,
 
   AT_DISPATCH_ALL_TYPES(
       temp_coors.scalar_type(), "determin_duplicate", ([&] {
-        determin_voxel_num<int><<<1, 1, 0, at::cuda::getCurrentCUDAStream()>>>(
+        determin_voxel_num<int><<<1, 1, 0, c10::cuda::getCurrentCUDAStream()>>>(
             num_points_per_voxel.contiguous().data_ptr<int>(),
             point_to_voxelidx.contiguous().data_ptr<int>(),
             point_to_pointidx.contiguous().data_ptr<int>(),
@@ -339,7 +339,7 @@ int hard_voxelize_gpu(const at::Tensor& points, at::Tensor& voxels,
   AT_DISPATCH_ALL_TYPES(
       points.scalar_type(), "assign_point_to_voxel", ([&] {
         assign_point_to_voxel<float, int>
-            <<<cp_grid, cp_block, 0, at::cuda::getCurrentCUDAStream()>>>(
+            <<<cp_grid, cp_block, 0, c10::cuda::getCurrentCUDAStream()>>>(
                 pts_output_size, points.contiguous().data_ptr<float>(),
                 point_to_voxelidx.contiguous().data_ptr<int>(),
                 coor_to_voxelidx.contiguous().data_ptr<int>(),
@@ -357,7 +357,7 @@ int hard_voxelize_gpu(const at::Tensor& points, at::Tensor& voxels,
   AT_DISPATCH_ALL_TYPES(
       points.scalar_type(), "assign_point_to_voxel", ([&] {
         assign_voxel_coors<float, int><<<coors_cp_grid, coors_cp_block, 0,
-                                         at::cuda::getCurrentCUDAStream()>>>(
+                                         c10::cuda::getCurrentCUDAStream()>>>(
             coors_output_size, temp_coors.contiguous().data_ptr<int>(),
             point_to_voxelidx.contiguous().data_ptr<int>(),
             coor_to_voxelidx.contiguous().data_ptr<int>(),
@@ -415,7 +415,7 @@ int nondisterministic_hard_voxelize_gpu(
   AT_DISPATCH_ALL_TYPES(
       points.scalar_type(), "hard_voxelize_kernel", ([&] {
     dynamic_voxelize_kernel<scalar_t, int>
-    <<<grid, block, 0, at::cuda::getCurrentCUDAStream()>>>(
+    <<<grid, block, 0, c10::cuda::getCurrentCUDAStream()>>>(
         points.contiguous().data_ptr<scalar_t>(),
         temp_coors.contiguous().data_ptr<int>(), voxel_x, voxel_y,
         voxel_z, coors_x_min, coors_y_min, coors_z_min, coors_x_max,
@@ -453,7 +453,7 @@ int nondisterministic_hard_voxelize_gpu(
   dim3 cp_block(512);
   AT_DISPATCH_ALL_TYPES(points.scalar_type(), "get_assign_pos", ([&] {
     nondisterministic_get_assign_pos<<<cp_grid, cp_block, 0,
-    at::cuda::getCurrentCUDAStream()>>>(
+    c10::cuda::getCurrentCUDAStream()>>>(
         num_points,
         coors_map.contiguous().data_ptr<int32_t>(),
         pts_id.contiguous().data_ptr<int32_t>(),
@@ -465,7 +465,7 @@ int nondisterministic_hard_voxelize_gpu(
   AT_DISPATCH_ALL_TYPES(
       points.scalar_type(), "assign_point_to_voxel", ([&] {
     nondisterministic_assign_point_voxel<scalar_t>
-    <<<cp_grid, cp_block, 0, at::cuda::getCurrentCUDAStream()>>>(
+    <<<cp_grid, cp_block, 0, c10::cuda::getCurrentCUDAStream()>>>(
         num_points, points.contiguous().data_ptr<scalar_t>(),
         coors_map.contiguous().data_ptr<int32_t>(),
         pts_id.contiguous().data_ptr<int32_t>(),
@@ -512,7 +512,7 @@ void dynamic_voxelize_gpu(const at::Tensor& points, at::Tensor& coors,
   const int col_blocks = at::cuda::ATenCeilDiv(num_points, threadsPerBlock);
   dim3 blocks(col_blocks);
   dim3 threads(threadsPerBlock);
-  cudaStream_t stream = at::cuda::getCurrentCUDAStream();
+  cudaStream_t stream = c10::cuda::getCurrentCUDAStream();
 
   AT_DISPATCH_ALL_TYPES(points.scalar_type(), "dynamic_voxelize_kernel", [&] {
     dynamic_voxelize_kernel<scalar_t, int><<<blocks, threads, 0, stream>>>(

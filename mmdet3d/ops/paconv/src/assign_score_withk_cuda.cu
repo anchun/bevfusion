@@ -13,7 +13,7 @@
 #include <ATen/ATen.h>
 #include <ATen/cuda/CUDAContext.h>
 #include <torch/types.h>
-
+#include <c10/cuda/CUDAStream.h>
 
 #define THREADS_PER_BLOCK 256
 #define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
@@ -197,7 +197,7 @@ void assign_score_withk_backward_wrapper(int B, int N0, int N1, int M, int K, in
     float* grad_centers_data = grad_centers.data_ptr<float>();
     float* grad_scores_data = grad_scores.data_ptr<float>();
 
-    cudaStream_t stream = at::cuda::getCurrentCUDAStream();
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream();
 
     dim3 blocks1(DIVUP(B*M*O, THREADS_PER_BLOCK));
     dim3 threads1(THREADS_PER_BLOCK);

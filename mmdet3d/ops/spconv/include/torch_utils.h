@@ -17,12 +17,12 @@
 #include <ATen/cuda/CUDAContext.h>
 #include <tensorview/tensorview.h>
 #include <torch/script.h>
-
+#include <c10/cuda/CUDAStream.h>
 namespace tv {
 
 struct TorchGPU : public tv::GPU {
   virtual cudaStream_t getStream() const override {
-    return at::cuda::getCurrentCUDAStream();
+    return c10::cuda::getCurrentCUDAStream();
   }
 };
 
